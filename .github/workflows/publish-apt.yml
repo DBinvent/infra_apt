@@ -64,7 +64,7 @@ jobs:
         run: ${{ inputs.build_script }}
 
       - name: Publish to apt repo
-        uses: DBinvent/infra_apt/actions/publish-deb@main
+        uses: DBinvent/infra_apt/actions/publish-deb@v1
         with:
           deb: ${{ steps.build.outputs.deb }}
           repo_dir: ${{ inputs.repo_dir }}

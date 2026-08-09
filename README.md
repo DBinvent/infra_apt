@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   build:
-    uses: DBinvent/infra_apt/.github/workflows/publish-apt.yml@main
+    uses: DBinvent/infra_apt/.github/workflows/publish-apt.yml@v1
     with:
       project: <project>
       package: <reprepro codename, matches repo-conf/distributions>
@@ -59,7 +59,8 @@ Give each project its own `repo_dir` (own reprepro `conf`/`pool`/`dists`) —
 the publish script overwrites `REPO_DIR/conf/distributions` wholesale, so
 projects can't safely share one repo root.
 
-Once this pipeline is stable, pin callers to a tag (`@v1`) instead of
-`@main` so an edit here doesn't simultaneously affect every project.
+Callers should pin to a tag (currently `@v1`), not `@main` — bump the tag
+deliberately when this pipeline changes so an edit here doesn't
+simultaneously affect every project at once.
 
 See `yaxaha_dist` for a working reference implementation.
