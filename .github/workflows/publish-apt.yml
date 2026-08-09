@@ -1,0 +1,75 @@
+name: Publish APT package (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Human-readable project name (for logs)
+        required: true
+        type: string
+      package:
+        description: reprepro package/codename, matches Codename in repo-conf/distributions
+        required: true
+        type: string
+      repo_dir:
+        description: reprepro repository root on the runner
+        required: true
+        type: string
+      build_script:
+        description: Shell command (run from the caller repo root) that builds the .deb and writes `deb=<path>` to $GITHUB_OUTPUT
+        required: false
+        type: string
+        default: ./build.sh
+      conf_dir:
+        description: Path, relative to the caller repo root, to the dir holding repo-conf/distributions
+        required: false
+        type: string
+        default: ./repo-conf
+      install_html:
+        description: Path, relative to the caller repo root, to install.html
+        required: false
+        type: string
+        default: ./install.html
+      cleanup_docker:
+        description: Run `docker system prune -a -f` after publishing
+        required: false
+        type: boolean
+        default: false
+      runner:
+        description: JSON runs-on value (labels array, or {group, labels} object)
+        required: false
+        type: string
+        default: '{"group":"Default","labels":["self-hosted"]}'
+    secrets:
+      gpg_key:
+        required: true
+
+jobs:
+  build-and-publish:
+    runs-on: ${{ fromJson(inputs.runner) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check disk space
+        shell: bash
+        run: |
+          df -h
+          echo "Available space before cleanup:"
+          df -h ${{ runner.tool_cache }} || df -h ~ || df -h / || true
+
+      - name: Build package
+        id: build
+        shell: bash
+        run: ${{ inputs.build_script }}
+
+      - name: Publish to apt repo
+        uses: DBinvent/infra_apt/actions/publish-deb@main
+        with:
+          deb: ${{ steps.build.outputs.deb }}
+          repo_dir: ${{ inputs.repo_dir }}
+          conf_dir: ${{ inputs.conf_dir }}
+          package: ${{ inputs.package }}
+          gpg_key: ${{ secrets.gpg_key }}
+          install_html: ${{ inputs.install_html }}
+          cleanup_docker: ${{ inputs.cleanup_docker }}
