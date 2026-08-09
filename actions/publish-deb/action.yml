@@ -21,10 +21,6 @@ inputs:
     description: Optional path to an install.html to publish as the repo's index.html
     required: false
     default: ''
-  cleanup_docker:
-    description: Run `docker system prune -a -f` after publishing
-    required: false
-    default: 'false'
 
 runs:
   using: composite
@@ -38,5 +34,4 @@ runs:
         PACKAGE: ${{ inputs.package }}
         GPG_KEY: ${{ inputs.gpg_key }}
         INSTALL_HTML: ${{ inputs.install_html }}
-        CLEANUP_DOCKER: ${{ inputs.cleanup_docker }}
       run: "${{ github.action_path }}/../../scripts/publish-apt.sh"

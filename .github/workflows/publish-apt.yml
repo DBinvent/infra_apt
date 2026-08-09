@@ -51,19 +51,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check disk space
+      - name: Check disk space by infra
+        id: disk_before
         shell: bash
         run: |
-          df -h
-          echo "Available space before cleanup:"
-          df -h ${{ runner.tool_cache }} || df -h ~ || df -h / || true
+          DISK_PATH="${{ runner.tool_cache }}"
+          [ -d "$DISK_PATH" ] || DISK_PATH="$HOME"
+          echo "Available space before run:"
+          df -h "$DISK_PATH"
+          used_mb=$(df --output=used -BM "$DISK_PATH" | tail -1 | tr -dc '0-9')
+          echo "used_mb=$used_mb" >> "$GITHUB_OUTPUT"
 
-      - name: Build package
+      - name: Build package (inputs.build_script)
         id: build
         shell: bash
         run: ${{ inputs.build_script }}
 
-      - name: Publish to apt repo
+      - name: "Publish to apt repo (publish-apt.sh: gpg&reprepo)"
         uses: DBinvent/infra_apt/actions/publish-deb@v1
         with:
           deb: ${{ steps.build.outputs.deb }}
@@ -72,4 +76,20 @@ jobs:
           package: ${{ inputs.package }}
           gpg_key: ${{ secrets.gpg_key }}
           install_html: ${{ inputs.install_html }}
-          cleanup_docker: ${{ inputs.cleanup_docker }}
+
+      - name: Cleanup docker
+        if: ${{ inputs.cleanup_docker }}
+        shell: bash
+        run: docker system prune -a -f
+
+      - name: Check disk space after run
+        if: always()
+        shell: bash
+        run: |
+          DISK_PATH="${{ runner.tool_cache }}"
+          [ -d "$DISK_PATH" ] || DISK_PATH="$HOME"
+          echo "Available space after run:"
+          df -h "$DISK_PATH"
+          used_mb=$(df --output=used -BM "$DISK_PATH" | tail -1 | tr -dc '0-9')
+          before_mb=${{ steps.disk_before.outputs.used_mb || 0 }}
+          echo "Disk usage increased by $((used_mb - before_mb)) MB during this run"

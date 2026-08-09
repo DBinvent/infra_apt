@@ -13,7 +13,6 @@ set -Eeu
 #   PACKAGE   - reprepro package/codename (matches Codename in distributions)
 # Optional env vars:
 #   INSTALL_HTML   - path to an install.html to publish as REPO_DIR/index.html
-#   CLEANUP_DOCKER - "true" to run `docker system prune -a -f` after publishing
 
 : "${DEB:?DEB is required}"
 : "${REPO_DIR:?REPO_DIR is required}"
@@ -45,11 +44,6 @@ reprepro -b "$REPO_DIR" --conf "$CONF_DIR" includedeb "$PACKAGE" "$DEB"
 
 cp -f "$SIG" "$REPO_DIR/"
 rm -f "$SIG"
-
-if [ "${CLEANUP_DOCKER:-false}" = "true" ]; then
-  echo "Cleaning up docker..."
-  docker system prune -a -f
-fi
 
 dpkg --contents "$DEB"
 echo "Package:"
