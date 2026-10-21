@@ -8,9 +8,14 @@ on:
         required: true
         type: string
       package:
-        description: reprepro package/codename, matches Codename in repo-conf/distributions
+        description: the package the .deb carries; the reprepro codename too, unless codename is set
         required: true
         type: string
+      codename:
+        description: reprepro distribution (Codename in repo-conf/distributions) when it is not named like the package - a package published into another project's repository root
+        required: false
+        type: string
+        default: ''
       repo_dir:
         description: reprepro repository root on the runner
         required: true
@@ -68,12 +73,13 @@ jobs:
         run: ${{ inputs.build_script }}
 
       - name: "Publish to apt repo (publish-apt.sh: gpg&reprepo)"
-        uses: DBinvent/infra_apt/actions/publish-deb@v1
+        uses: DBinvent/infra_apt/actions/publish-deb@v3
         with:
           deb: ${{ steps.build.outputs.deb }}
           repo_dir: ${{ inputs.repo_dir }}
           conf_dir: ${{ inputs.conf_dir }}
           package: ${{ inputs.package }}
+          codename: ${{ inputs.codename }}
           gpg_key: ${{ secrets.gpg_key }}
           install_html: ${{ inputs.install_html }}
 

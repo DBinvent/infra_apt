@@ -12,8 +12,12 @@ inputs:
     description: Path to the directory containing this project's repo-conf/distributions
     required: true
   package:
-    description: reprepro package/codename (matches Codename in repo-conf/distributions)
+    description: the package the .deb carries (its previous version is removed first); the reprepro codename too, unless codename is set
     required: true
+  codename:
+    description: reprepro distribution (Codename in repo-conf/distributions) when it is not named like the package - a package published into another project's repository root
+    required: false
+    default: ''
   gpg_key:
     description: GPG signing key id/fingerprint
     required: true
@@ -32,6 +36,7 @@ runs:
         REPO_DIR: ${{ inputs.repo_dir }}
         CONF_DIR: ${{ inputs.conf_dir }}
         PACKAGE: ${{ inputs.package }}
+        CODENAME: ${{ inputs.codename }}
         GPG_KEY: ${{ inputs.gpg_key }}
         INSTALL_HTML: ${{ inputs.install_html }}
       run: "${{ github.action_path }}/../../scripts/publish-apt.sh"
