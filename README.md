@@ -11,6 +11,25 @@ config.
   `reprepro includedeb` it into a repo dir, copy in `install.html` as the
   index page. Callable standalone (env-var driven), used both locally and
   from CI.
+- `scripts/publish-pak.sh` - a tarball of binaries, for a host that takes no deb
+  or rpm, into the repository's download area (`REPO_DIR/paks`): as
+  `<name>-<version>-<sha8>.tar.gz`, a name that follows from the bytes and so never
+  changes, with its `.sha256` and a detached `.sig`; `<name>-latest.tar.gz`, a link
+  to it, with a `.sha256` naming the link; and the manifest `<name>.json` (version,
+  file, sha256, bytes). The previous artifact of the name goes.
+- `scripts/publish-docker.sh` - an image to Docker Hub: built from a context
+  directory on a separate docker host (`DOCKER_HOST`, `ssh://` or `tcp://`;
+  `DOCKER_LOCAL=1` allows this host's own daemon), checked by a `SMOKE` command,
+  pushed under every tag in `TAGS`, and confirmed: Docker Hub must serve the pushed
+  digest to anyone, unauthenticated, or it fails. The token is `DOCKER_TOKEN` (and
+  `DOCKER_USER`, default the image's namespace), from the environment or this
+  repository's `.env` - only those two keys are read, the token goes to
+  `docker login` on stdin, into a configuration directory of the run that is
+  removed after it. `DESCRIPTION` (one line) and `README` (a Markdown file) set
+  the repository's Docker Hub page after the push, read back to confirm - a push
+  carries no page of its own. `PUSH=0` builds and checks only; `BUILD=0` pushes what
+  a run before built; `PUSH=login` checks the token and pushes nothing;
+  `PUSH=describe` sets the page only.
 - `actions/publish-deb/` - composite action wrapping the script above.
 - `.github/workflows/publish-apt.yml` - reusable workflow (`workflow_call`):
   checks out the caller repo, runs the caller's build step, then calls
