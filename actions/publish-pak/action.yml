@@ -1,0 +1,32 @@
+name: 'Publish download tarball'
+description: 'Sign a tarball of binaries and publish it into the repository download area (paks/)'
+
+inputs:
+  tgz:
+    description: Path to the built .tar.gz
+    required: true
+  name:
+    description: the artifact's name, e.g. sge (<name>-latest.tar.gz, <name>.json)
+    required: true
+  version:
+    description: its version, x.y.z
+    required: true
+  repo_dir:
+    description: the repository root directory on the runner
+    required: true
+  gpg_key:
+    description: GPG signing key id/fingerprint
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Sign and publish to paks/
+      shell: bash
+      env:
+        TGZ: ${{ inputs.tgz }}
+        NAME: ${{ inputs.name }}
+        VERSION: ${{ inputs.version }}
+        REPO_DIR: ${{ inputs.repo_dir }}
+        GPG_KEY: ${{ inputs.gpg_key }}
+      run: "${{ github.action_path }}/../../scripts/publish-pak.sh"

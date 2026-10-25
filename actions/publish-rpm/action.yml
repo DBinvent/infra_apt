@@ -1,0 +1,33 @@
+name: 'Publish yum package'
+description: 'Sign an .rpm with GPG and publish it into the yum repository beside the apt one'
+
+inputs:
+  rpm:
+    description: Path to the built .rpm package
+    required: true
+  repo_dir:
+    description: the repository root directory on the runner
+    required: true
+  package:
+    description: the package the .rpm carries (its previous builds are removed)
+    required: true
+  yum_subdir:
+    description: the yum repository under repo_dir
+    required: false
+    default: yum/el9
+  gpg_key:
+    description: GPG signing key id/fingerprint
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Sign and publish to the yum repository
+      shell: bash
+      env:
+        RPM: ${{ inputs.rpm }}
+        REPO_DIR: ${{ inputs.repo_dir }}
+        PACKAGE: ${{ inputs.package }}
+        YUM_SUBDIR: ${{ inputs.yum_subdir }}
+        GPG_KEY: ${{ inputs.gpg_key }}
+      run: "${{ github.action_path }}/../../scripts/publish-rpm.sh"

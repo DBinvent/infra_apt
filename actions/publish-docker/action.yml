@@ -1,0 +1,51 @@
+name: 'Publish Docker image'
+description: 'Push an image the build step built to Docker Hub, and confirm it is served publicly'
+
+inputs:
+  image:
+    description: the repository, e.g. dbinvent/sge
+    required: true
+  tags:
+    description: the tags the build step gave the image, space separated (all of them are pushed)
+    required: true
+  docker_host:
+    description: the docker host the image was built on (ssh:// or tcp://); empty is the runner's own daemon
+    required: false
+    default: ''
+  description:
+    description: the repository's one-line description on Docker Hub
+    required: false
+    default: ''
+  readme:
+    description: a Markdown file, relative to the caller repo root - the repository's page on Docker Hub
+    required: false
+    default: ''
+  docker_token:
+    description: a Docker Hub access token with write access to the image
+    required: true
+  docker_user:
+    description: the Docker Hub account the token belongs to (default the image's namespace)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Push to Docker Hub
+      shell: bash
+      env:
+        # the build step built and checked it: this only pushes (BUILD=0)
+        BUILD: '0'
+        CONTEXT: ${{ github.workspace }}
+        IMAGE: ${{ inputs.image }}
+        TAGS: ${{ inputs.tags }}
+        DOCKER_HOST: ${{ inputs.docker_host }}
+        DOCKER_LOCAL: ${{ inputs.docker_host == '' && '1' || '0' }}
+        DESCRIPTION: ${{ inputs.description }}
+        README: ${{ inputs.readme }}
+        DOCKER_TOKEN: ${{ inputs.docker_token }}
+        DOCKER_USER: ${{ inputs.docker_user }}
+      run: |
+        # an empty DOCKER_HOST is not the default daemon's socket to docker: unset it
+        [ -n "$DOCKER_HOST" ] || unset DOCKER_HOST
+        "${{ github.action_path }}/../../scripts/publish-docker.sh"

@@ -21,7 +21,7 @@ on:
         required: true
         type: string
       build_script:
-        description: Shell command (run from the caller repo root) that builds the .deb and writes `deb=<path>` to $GITHUB_OUTPUT
+        description: Shell command (run from the caller repo root) that builds the .deb and writes `deb=<path>` to $GITHUB_OUTPUT - and, for the other forms, `rpm=<path>`, `tgz=<path>`, `version=<x.y.z>` and `docker_tags=<tags>`
         required: false
         type: string
         default: ./build.sh
@@ -45,9 +45,42 @@ on:
         required: false
         type: string
         default: '{"group":"Default","labels":["self-hosted"]}'
+      yum_subdir:
+        description: the yum repository under repo_dir an `rpm=` of the build goes into
+        required: false
+        type: string
+        default: yum/el9
+      pak_name:
+        description: publish the build's `tgz=` (with its `version=`) into repo_dir/paks under this name; empty publishes no tarball
+        required: false
+        type: string
+        default: ''
+      docker_image:
+        description: push the build's `docker_tags=` of this image (built and checked by build_script) to Docker Hub; empty pushes none
+        required: false
+        type: string
+        default: ''
+      docker_host:
+        description: the docker host build_script built the image on (ssh:// or tcp://); empty is the runner's own daemon
+        required: false
+        type: string
+        default: ''
+      docker_description:
+        description: the image repository's one-line description on Docker Hub
+        required: false
+        type: string
+        default: ''
+      docker_readme:
+        description: Path, relative to the caller repo root, to the Markdown page of the image repository on Docker Hub
+        required: false
+        type: string
+        default: ''
     secrets:
       gpg_key:
         required: true
+      docker_token:
+        description: a Docker Hub access token with write access to docker_image
+        required: false
 
 jobs:
   build-and-publish:
@@ -55,6 +88,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # before anything is built or published: an image to push needs its token, or
+      # the deb, rpm and tarball would go out and the run fail at the image
+      - name: Check the secrets the inputs need
+        if: ${{ inputs.docker_image != '' }}
+        shell: bash
+        env:
+          DOCKER_TOKEN: ${{ secrets.docker_token }}
+        run: |
+          [ -n "$DOCKER_TOKEN" ] || { echo "ERROR: docker_image is ${{ inputs.docker_image }}, and the secret docker_token is empty - nothing built, nothing published" >&2; exit 1; }
 
       - name: Check disk space by infra
         id: disk_before
@@ -70,10 +113,14 @@ jobs:
       - name: Build package (inputs.build_script)
         id: build
         shell: bash
-        run: ${{ inputs.build_script }}
+        env:
+          DOCKER_HOST: ${{ inputs.docker_host }}
+        run: |
+          [ -n "$DOCKER_HOST" ] || unset DOCKER_HOST
+          ${{ inputs.build_script }}
 
       - name: "Publish to apt repo (publish-apt.sh: gpg&reprepo)"
-        uses: DBinvent/infra_apt/actions/publish-deb@v3
+        uses: DBinvent/infra_apt/actions/publish-deb@v4
         with:
           deb: ${{ steps.build.outputs.deb }}
           repo_dir: ${{ inputs.repo_dir }}
@@ -82,6 +129,37 @@ jobs:
           codename: ${{ inputs.codename }}
           gpg_key: ${{ secrets.gpg_key }}
           install_html: ${{ inputs.install_html }}
+
+      - name: "Publish to yum repo (publish-rpm.sh: rpmsign&createrepo)"
+        if: ${{ steps.build.outputs.rpm != '' }}
+        uses: DBinvent/infra_apt/actions/publish-rpm@v4
+        with:
+          rpm: ${{ steps.build.outputs.rpm }}
+          repo_dir: ${{ inputs.repo_dir }}
+          package: ${{ inputs.package }}
+          yum_subdir: ${{ inputs.yum_subdir }}
+          gpg_key: ${{ secrets.gpg_key }}
+
+      - name: "Publish the tarball to paks/ (publish-pak.sh)"
+        if: ${{ inputs.pak_name != '' }}
+        uses: DBinvent/infra_apt/actions/publish-pak@v4
+        with:
+          tgz: ${{ steps.build.outputs.tgz }}
+          name: ${{ inputs.pak_name }}
+          version: ${{ steps.build.outputs.version }}
+          repo_dir: ${{ inputs.repo_dir }}
+          gpg_key: ${{ secrets.gpg_key }}
+
+      - name: "Push the image to Docker Hub (publish-docker.sh)"
+        if: ${{ inputs.docker_image != '' }}
+        uses: DBinvent/infra_apt/actions/publish-docker@v4
+        with:
+          image: ${{ inputs.docker_image }}
+          tags: ${{ steps.build.outputs.docker_tags }}
+          docker_host: ${{ inputs.docker_host }}
+          description: ${{ inputs.docker_description }}
+          readme: ${{ inputs.docker_readme }}
+          docker_token: ${{ secrets.docker_token }}
 
       - name: Cleanup docker
         if: ${{ inputs.cleanup_docker }}
