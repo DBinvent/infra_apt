@@ -120,7 +120,7 @@ jobs:
           ${{ inputs.build_script }}
 
       - name: "Publish to apt repo (publish-apt.sh: gpg&reprepo)"
-        uses: DBinvent/infra_apt/actions/publish-deb@v4
+        uses: DBinvent/infra_apt/actions/publish-deb@v5
         with:
           deb: ${{ steps.build.outputs.deb }}
           repo_dir: ${{ inputs.repo_dir }}
@@ -132,7 +132,7 @@ jobs:
 
       - name: "Publish to yum repo (publish-rpm.sh: rpmsign&createrepo)"
         if: ${{ steps.build.outputs.rpm != '' }}
-        uses: DBinvent/infra_apt/actions/publish-rpm@v4
+        uses: DBinvent/infra_apt/actions/publish-rpm@v5
         with:
           rpm: ${{ steps.build.outputs.rpm }}
           repo_dir: ${{ inputs.repo_dir }}
@@ -142,7 +142,7 @@ jobs:
 
       - name: "Publish the tarball to paks/ (publish-pak.sh)"
         if: ${{ inputs.pak_name != '' }}
-        uses: DBinvent/infra_apt/actions/publish-pak@v4
+        uses: DBinvent/infra_apt/actions/publish-pak@v5
         with:
           tgz: ${{ steps.build.outputs.tgz }}
           name: ${{ inputs.pak_name }}
@@ -152,7 +152,7 @@ jobs:
 
       - name: "Push the image to Docker Hub (publish-docker.sh)"
         if: ${{ inputs.docker_image != '' }}
-        uses: DBinvent/infra_apt/actions/publish-docker@v4
+        uses: DBinvent/infra_apt/actions/publish-docker@v5
         with:
           image: ${{ inputs.docker_image }}
           tags: ${{ steps.build.outputs.docker_tags }}
