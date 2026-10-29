@@ -132,8 +132,11 @@ for t in "${TAG_LIST[@]}"; do
   # repository answers nothing
   served=""
   for _ in $(seq 1 12); do
+    # the tag's own digest, the top-level one: an image with attestations is an index,
+    # and its "images" list the digests of the manifests in it - the first "digest"
+    # in the answer is one of those, not the index the push named
     served="$(curl -fsS -m 20 "https://hub.docker.com/v2/namespaces/${IMAGE%%/*}/repositories/${IMAGE#*/}/tags/$t" 2>/dev/null \
-      | grep -oE '"digest": *"sha256:[0-9a-f]{64}"' | head -1 | grep -oE 'sha256:[0-9a-f]{64}')" || true
+      | python3 -I -c 'import json, sys; print(json.load(sys.stdin).get("digest") or "")')" || true
     [ "$served" = "$digest" ] && break
     sleep 5
   done
